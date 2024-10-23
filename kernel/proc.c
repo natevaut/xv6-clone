@@ -948,3 +948,47 @@ int getnice(int pid)
 
   return -404;
 }
+
+
+void initrwsema(struct rwsemaphore *rws)
+{
+  rws->readcount = 0;
+  int amt = 1; // 1 read/write at a time
+  initsema(&(rws->writesema), amt);
+  initsema(&(rws->readsema), amt);
+}
+// A Reader enters room
+int downreadsema(struct rwsemaphore *rws)
+{
+  downsema(&(rws->readsema)); // lock read
+  if (rws->readcount++ == 0)
+  {
+    // lock writer if first read starting
+    downsema(&(rws->writesema));
+  }
+  upsema(&(rws->readsema)); // unlock read
+  return rws->readcount;
+}
+// A Reader exits room
+int upreadsema(struct rwsemaphore *rws)
+{
+  downsema(&(rws->readsema)); // lock read
+  if (--(rws->readcount) == 0)
+  {
+    // unlock write if this is last read proc
+    upsema(&(rws->writesema));
+  }
+  upsema(&(rws->readsema)); // unlock read
+
+  return rws->readcount;
+}
+// A Writer enters room
+void downwritesema(struct rwsemaphore *rws)
+{
+  downsema(&(rws->writesema)); // lock write
+}
+// A writer exits room
+void upwritesema(struct rwsemaphore *rws)
+{
+  upsema(&(rws->writesema)); // unlock write
+}
